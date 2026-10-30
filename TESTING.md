@@ -1,27 +1,27 @@
 # Verification record
 
-Run date: 30 October 2026 (Asia/Kolkata). No GitHub push, Vercel deployment, hosted database mutation, service provisioning or email sending was performed.
+Run date: 30 October 2026 (Asia/Kolkata). No GitHub push, Vercel deployment, paid service provisioning or email sending was performed. After the initial local implementation, the user explicitly approved the hosted schema/catalogue setup recorded in docs/SUPABASE_CONNECTION.md.
 
 ## Actual results
 
-| Check                                                                                                         | Result                                                                                                           |
-| ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `npm run typecheck`                                                                                           | Passed                                                                                                           |
-| `npm test`                                                                                                    | Passed: 17 tests, 0 failed, 0 skipped                                                                            |
-| `npm exec --yes --package=node@24.22.2 -- node --conditions=react-server --import tsx --test tests/*.test.ts` | Passed: same 17 tests under the pinned runtime                                                                   |
-| `npm run db:types`                                                                                            | Passed; public RPC types generated from applied migration SQL catalog                                            |
-| `npm run build`                                                                                               | Passed early checkpoint; final pinned-runtime build recorded below                                               |
-| `npm exec --yes --package=node@24.22.2 -- node node_modules/next/dist/bin/next build --webpack`               | Passed: final build includes core screens, all API routes and AIRA under Node 24.22.2                            |
-| `node scripts/http-smoke.mjs` against local dev and final production servers                                  | Passed: anonymous dashboard/moderation/AIRA 401, unknown action 404, foreign-origin 403, workspace 307 to /login |
-| `curl http://localhost:3000/`                                                                                 | HTTP 200                                                                                                         |
-| Browser inspection                                                                                            | Public shell and sign-in form rendered; workspace navigation reached sign-in gate at narrow viewport             |
-| `docker compose --env-file .env.example config --no-env-resolution --quiet`                                   | Passed static configuration validation                                                                           |
-| `docker info --format '{{.ServerVersion}}'`                                                                   | Blocked: daemon not running                                                                                      |
-| Docker image build/start/hot reload                                                                           | Not run: local daemon stopped                                                                                    |
-| `npm run test:hosted`                                                                                         | Not run: explicit NOT RUN, exit 2; Supabase URL/key/test account/workspace unavailable                           |
-| Real magic-link verification, callback, logout and authenticated browser workflow                             | Not run: no configured hosted Auth/SMTP/legitimate accounts                                                      |
-| Real Bedrock model/region/IAM/expiry request                                                                  | Not run: no configured credentials                                                                               |
-| `git diff --check`                                                                                            | Passed                                                                                                           |
+| Check                                                                                                         | Result                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`                                                                                           | Passed                                                                                                            |
+| `npm test`                                                                                                    | Passed: 17 tests, 0 failed, 0 skipped                                                                             |
+| `npm exec --yes --package=node@24.22.2 -- node --conditions=react-server --import tsx --test tests/*.test.ts` | Passed: same 17 tests under the pinned runtime                                                                    |
+| `npm run db:types`                                                                                            | Passed; public RPC types generated from applied migration SQL catalog                                             |
+| `npm run build`                                                                                               | Passed early checkpoint; final pinned-runtime build recorded below                                                |
+| `npm exec --yes --package=node@24.22.2 -- node node_modules/next/dist/bin/next build --webpack`               | Passed: final build includes core screens, all API routes and AIRA under Node 24.22.2                             |
+| `node scripts/http-smoke.mjs` against local dev and final production servers                                  | Passed: anonymous dashboard/moderation/AIRA 401, unknown action 404, foreign-origin 403, workspace 307 to /login  |
+| `curl http://localhost:3000/`                                                                                 | HTTP 200                                                                                                          |
+| Browser inspection                                                                                            | Public shell and sign-in form rendered; workspace navigation reached sign-in gate at narrow viewport              |
+| `docker compose --env-file .env.example config --no-env-resolution --quiet`                                   | Passed static configuration validation                                                                            |
+| `docker info --format '{{.ServerVersion}}'`                                                                   | Passed on follow-up: Docker 29.6.1 daemon available                                                               |
+| Docker image build/start/hot reload                                                                           | Passed on follow-up: image build/start and reversible hot reload verified                                         |
+| `npm run test:hosted`                                                                                         | Not run: explicit NOT RUN, exit 2; legitimate verified test account/workspace unavailable; URL/key now configured |
+| Real magic-link verification, callback, logout and authenticated browser workflow                             | Not run: no configured legitimate Auth accounts/approved memberships; SMTP/callback setup remains unverified      |
+| Real Bedrock model/region/IAM/expiry request                                                                  | Not run: no configured credentials                                                                                |
+| `git diff --check`                                                                                            | Passed                                                                                                            |
 
 Initial dependency installation timed out once; retry succeeded. The first tsx CLI test attempt hit a sandbox IPC restriction; the committed test command uses Node's `--import tsx` and passes. An intermediate AIRA type error was corrected before the final typecheck. No unresolved automated failure is being presented as a pass.
 
@@ -72,3 +72,21 @@ Use at least three legitimate approved client identities, a separate moderator, 
 6. Confirm Docker hot reload and native Vercel build separately, only after approval for external setup/deployment.
 
 No private media route exists. Adding uploads, recordings, comments, exports, autocomplete or caches requires extending these checks and the parent-audience/withdrawal rules.
+
+## Supabase and Docker follow-up
+
+The approved hosted setup and Docker runtime results are recorded in [docs/SUPABASE_CONNECTION.md](docs/SUPABASE_CONNECTION.md). All 17 tests and TypeScript checking also passed inside the Linux container. The hosted SQL metadata check confirmed 20 application tables, RLS on every table, no direct client write grants and the expected portal function permissions. This is not a multi-account hosted workflow test.
+
+Additional follow-up results:
+
+| Check                                                       | Result                                                                                                              |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Host `npm run check:connection`                             | Passed: Auth 200, anonymous portal execution 42501, private profile 406/PGRST106                                    |
+| `docker compose exec -T web npm test`                       | Passed: all 17 tests                                                                                                |
+| `docker compose exec -T web npm run typecheck`              | Passed                                                                                                              |
+| `node scripts/docker-hot-reload.mjs`                        | Passed: temporary marker rendered; original source restored and rendered                                            |
+| Docker image `.env.local` presence                          | false; runtime injection confirmed separately                                                                       |
+| Container outbound provider connectivity                    | First Auth request returned 200; subsequent probes failed with connect timeouts, also to unrelated public endpoints |
+| Azentio-only recreation and approved Docker Desktop restart | Completed; previous containers restored; outbound timeout remains                                                   |
+
+An early raw HTTP private-profile check used incomplete authentication headers and returned 401. The committed check uses the same SDK authentication as the app; the corrected host check passes. Container connection failures are reported separately and are not counted as successful provider integration.

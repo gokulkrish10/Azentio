@@ -47,3 +47,9 @@ Public home/catalogue and demo form can start independently. Then build workspac
 ## Remaining backend/UI gaps
 
 Full catalogue content, audience-restricted sessions/media, experiment submissions, persistent isolated sandbox runs, member role promotion policies, comments/reporting for comments, bookmarks, saved searches, knowledge resources, team spaces, release notes and support integrations are not implemented. Notification email is P1; attachments are omitted in P0; genuine federated training is excluded optional P2. Do not build controls that imply missing functionality works. See REQUIREMENTS_COVERAGE.md for owners and follow-up scope.
+
+## Connection follow-up
+
+Gokul’s local `.env.local` now targets the designated hosted development project, with migrations and catalogue applied after approval. Docker runtime/hot reload, container tests/typecheck and anonymous HTTP gates passed. Do not distribute `.env.local` or reapply the schema; configure your own local environment and request an approved verified account/membership. See docs/SUPABASE_CONNECTION.md.
+
+Current environment limit: host Supabase checks pass, but Docker outbound internet times out even after the approved engine restart. Build/tests/typecheck/hot reload and local HTTP gates pass. Use the documented native development fallback while Docker networking is investigated; do not interpret a local sign-in gate as proof of a working provider session.

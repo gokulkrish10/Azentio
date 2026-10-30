@@ -1,6 +1,6 @@
 # Deployment and identity setup
 
-No push, paid provisioning, external account changes or deployment has been performed. These are operator instructions for a later approved release. The implementation is not labelled production ready.
+No push, paid provisioning, external identity/account changes or deployment has been performed. The user-approved hosted schema/catalogue setup is recorded in docs/SUPABASE_CONNECTION.md. These are operator instructions for a later approved release. The implementation is not labelled production ready.
 
 ## Hosted development Supabase
 
@@ -58,6 +58,6 @@ After replacement, redeploy the authorised environment, sign in as an approved e
 
 Before an approved main release: full offline suite/typecheck/build, then hosted multi-account tenant/role tests, verified magic-link callback and sign-out, revoked membership with an existing browser session, moderator draft denial, three-to-two cohort withdrawal, in-flight AIRA withdrawal and current-citation validation. Set only legitimate disposable test-account credentials locally for `npm run test:hosted`; it signs in by password and does not send email or mutate workflow data. Review external SMTP/provider behavior separately.
 
-Run `docker compose config` and `docker compose up --build` with the configured hosted development environment. Check hot reload and named dependency/build cache volumes. A successful container does not prove Vercel compatibility. Docker daemon was stopped during this task, so image build/start/hot reload were not verified.
+Run `docker compose config` and `docker compose up --build` with the configured hosted development environment. Check hot reload and named dependency/build cache volumes. A successful container does not prove Vercel compatibility. The initial implementation could not verify Docker while its daemon was stopped. The follow-up connection task successfully verified image build/start, container tests/typecheck, HTTP gates and reversible hot reload; see docs/SUPABASE_CONNECTION.md.
 
 Production gaps include cross-process concurrency testing against hosted PostgreSQL/PostgREST, load/rate protection for Auth/AIRA/public forms, production CSP nonce adoption, retention/purge operations, accessibility audit with live identities, and the feature gaps in REQUIREMENTS_COVERAGE.md. Review provider logging and backups; do not log request bodies or private source/provider payloads.

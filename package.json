@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit",
     "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
     "db:types": "node --import tsx scripts/generate-types.ts",
-    "test:hosted": "node --import tsx scripts/hosted-smoke.ts"
+    "test:hosted": "node --import tsx scripts/hosted-smoke.ts",
+    "check:connection": "node scripts/supabase-connection-check.mjs",
+    "test:hot-reload": "node scripts/docker-hot-reload.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "3.1160.0",
