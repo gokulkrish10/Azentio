@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { userClient } from '@/server/supabase';
 import { body, failure, HttpError, json, originCheck } from '@/server/http';
+import { authFailure } from '@/server/auth-failure';
 export const runtime = 'nodejs';
 export async function POST(request: Request) {
   try {
@@ -17,7 +18,14 @@ export async function POST(request: Request) {
         emailRedirectTo: `${process.env.APP_ORIGIN}/auth/callback`,
       },
     });
-    if (error) throw new HttpError(429, 'SIGN_IN_UNAVAILABLE');
+    if (error) {
+      const diagnostic = authFailure(error);
+      console.warn('AUTH_LINK_REQUEST_FAILED', {
+        providerCode: diagnostic.providerCode,
+        upstreamStatus: diagnostic.upstreamStatus,
+      });
+      throw new HttpError(diagnostic.status, 'SIGN_IN_UNAVAILABLE');
+    }
     return json({
       message: 'If this approved account can sign in, check its email for a verification link.',
     });

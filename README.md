@@ -1,13 +1,19 @@
 # Azentio collaboration portal
 
+## Sethu UI branch
+
+The follow-on implementation now adds governed comments, saved learning tools, persistent synthetic scenarios, a content/recording library, employee teams and administration. **Hosted setup requires reviewing and applying new migrations 003–006**; see [IMPLEMENTATION_PROGRESS.md](IMPLEMENTATION_PROGRESS.md). Support integration stays disconnected. Model training remains outside this phase.
+
+`feature/sethu` starts from the integrated `origin/dev` foundation at `dceb325`. The first UI pass adds the public website, catalogue, enquiry forms, workspace navigation, dashboards and API-connected learning/theme/idea/notification/member/Playground/AIRA views. See [UI_IMPLEMENTATION.md](UI_IMPLEMENTATION.md) for technologies, route coverage, verification and remaining work. Backend security and shared contracts are unchanged. Use Node 24.22.2/npm 11.16.0; this machine's default Node 16 is unsupported.
+
 Gokul's Next.js / Supabase foundation for governed collective learning. All demonstration data is synthetic. Local development only; nothing has been pushed or deployed.
 
 ## Start
 
 1. Install Node **24.22.2** (`nvm install && nvm use`) and npm **11.16.0**.
 2. `npm ci`.
-3. Copy `.env.example` to `.env.local`. Configure a hosted development Supabase project's URL and publishable key; set `APP_ORIGIN=http://localhost:3000`.
-4. For a new development project, manually apply the two SQL migrations in `supabase/migrations/` in filename order through the Supabase SQL editor (or your controlled migration runner). Do not reset a hosted database. Only `public` should be exposed through the Data API; keep `private` unexposed. The configured project already has these migrations; do not reapply them—see docs/SUPABASE_CONNECTION.md.
+3. Create ignored `.env.local` (use `.env.example` if present). Configure the development Supabase project URL/publishable key and `APP_ORIGIN=http://localhost:3000`. Keep the actual file and credentials out of Git.
+4. For a fresh development project, review/apply all six SQL migrations in `supabase/migrations/` in filename order. The designated existing project already has 001/002 according to its receipt; review/apply only new 003–006 there. Do not reset hosted data or reapply CREATE statements. Expose only `public` in the Data API; keep `private` unexposed. See IMPLEMENTATION_PROGRESS.md and docs/SUPABASE_CONNECTION.md.
 5. Configure Auth callback URLs, custom SMTP and approved memberships as described in [DEPLOYMENT.md](DEPLOYMENT.md). No accounts, memberships or entitlements are self-provisioned by sign-in.
 6. `npm run dev`, or `docker compose up --build` with Docker Desktop running.
 7. Open `http://localhost:3000`, sign in, select an approved workspace, save a draft and submit separately. A separately approved moderator uses their employee workspace's moderation queue.

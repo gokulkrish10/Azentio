@@ -1,5 +1,7 @@
 # Deployment and identity setup
 
+The current `feature/sethu` branch additionally requires migrations 003–006. For the project whose receipt already records 001/002, apply only the four new migrations after review. See [IMPLEMENTATION_PROGRESS.md](IMPLEMENTATION_PROGRESS.md) for rollout order, private Storage policies, initial publisher/admin grants and hosted acceptance. The original setup notes below describe the foundation checkpoint; do not reapply its CREATE statements to the existing project.
+
 No push, paid provisioning, external identity/account changes or deployment has been performed. The user-approved hosted schema/catalogue setup is recorded in docs/SUPABASE_CONNECTION.md. These are operator instructions for a later approved release. The implementation is not labelled production ready.
 
 ## Hosted development Supabase

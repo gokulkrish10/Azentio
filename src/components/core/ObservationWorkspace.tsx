@@ -3,8 +3,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Dashboard, Observation, ActionInput, ActionOutput } from '@/shared/contracts';
 import { call } from '@/shared/client';
+import { observationCategories } from '@/shared/contracts';
+import { Pager } from '@/components/portal/PortalUI';
 const initial = {
   title: '',
+  category: 'market_observation',
   body: '',
   offeringId: '',
   topic: 'seasonality',
@@ -45,6 +48,14 @@ export function ObservationWorkspace({
   function field(k: keyof typeof fields, v: string) {
     setFields((f) => ({ ...f, [k]: v }));
   }
+  const [historyPages, setHistoryPages] = useState<Record<string, number>>({});
+  function loadHistory(id: string, page: number) {
+    void action(async () => {
+      const result = await call('observations.history', workspaceId, { id, page, pageSize: 20 });
+      setHistory((old) => ({ ...old, [id]: result.items }));
+      setHistoryPages((old) => ({ ...old, [id]: page }));
+    }, 'Revision history loaded.');
+  }
   async function action(run: () => Promise<unknown>, success: string) {
     setBusy(true);
     setMessage('');
@@ -63,6 +74,7 @@ export function ObservationWorkspace({
     setEdit(o);
     setFields({
       title: r.title,
+      category: r.category || 'market_observation',
       body: r.body,
       offeringId: r.offering_id,
       topic: r.topic,
@@ -96,6 +108,10 @@ export function ObservationWorkspace({
           <p className="message">
             No offerings are entitled in this workspace. Ask your organiser to assign access.
           </p>
+        ) : dashboard.onboarding && !dashboard.onboarding.acknowledged ? (
+          <p className="message">
+            Acknowledge the sharing explanation above before saving your first contribution.
+          </p>
         ) : (
           <form
             onSubmit={(e) => {
@@ -128,6 +144,18 @@ export function ObservationWorkspace({
               minLength={5}
               maxLength={160}
             />
+            <label htmlFor="category">Observation category</label>
+            <select
+              id="category"
+              value={fields.category}
+              onChange={(e) => field('category', e.target.value)}
+            >
+              {observationCategories.map((category) => (
+                <option key={category} value={category}>
+                  {category.replaceAll('_', ' ')}
+                </option>
+              ))}
+            </select>
             <label htmlFor="body">Observation</label>
             <textarea
               id="body"
@@ -308,6 +336,9 @@ export function ObservationWorkspace({
             </span>
           </div>
           <p className="prose">{o.revision.body}</p>
+          <p className="subtle-note">
+            Category: {(o.revision.category || 'market_observation').replaceAll('_', ' ')}
+          </p>
           <p className="muted">
             Source: {o.source_audience === 'private' ? 'author only' : 'organisation'} ·{' '}
             {o.revision.period_start} to {o.revision.period_end}
@@ -319,16 +350,7 @@ export function ObservationWorkspace({
           ))}
           {o.author_id === userId && (
             <>
-              <button
-                className="secondary"
-                disabled={busy}
-                onClick={() =>
-                  void action(async () => {
-                    const h = await call('observations.history', workspaceId, { id: o.id });
-                    setHistory((old) => ({ ...old, [o.id]: h.items }));
-                  }, 'Revision history loaded.')
-                }
-              >
+              <button className="secondary" disabled={busy} onClick={() => loadHistory(o.id, 0)}>
                 View revision and consent history
               </button>
               {history[o.id]?.map((h) => (
@@ -345,6 +367,14 @@ export function ObservationWorkspace({
                   </p>
                 </details>
               ))}
+              {history[o.id] && (
+                <Pager
+                  page={historyPages[o.id] || 0}
+                  count={history[o.id].length}
+                  busy={busy}
+                  setPage={(page) => loadHistory(o.id, page)}
+                />
+              )}
               <div className="row">
                 {['draft', 'clarification', 'rejected', 'published'].includes(o.state) && (
                   <button className="secondary" disabled={busy} onClick={() => start(o)}>

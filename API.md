@@ -1,5 +1,24 @@
 # Portal API
 
+## Completion phase actions
+
+Migrations 003–006 add the actions below on the existing authenticated envelope. See `src/shared/contracts.ts` for exact strict input/output types. Existing tenant/current-grant/entitlement checks, same-origin POSTs and request-keyed mutations continue to apply.
+
+- `onboarding.acknowledge`: versioned sharing-explanation acknowledgement, independent of contribution consent.
+- `bookmarks.list/set`, `searches.list/save/delete`: personal workspace-scoped references and filter definitions, no copied results.
+- `comments.list/create/withdraw/report/queue/review`: proposed originals, separate reviewed shared text, reporting/suspension, author notification and audited decisions.
+- `feedback.set`, `quality.get/set`: personal useful/needs-evidence feedback and moderator-assessed evidence quality.
+- `learning.configure`: portal-admin-only cohort minimum, 3–100; theme suppression occurs before pagination.
+- `sandbox.save/runs/feedback`: named user/workspace-isolated deterministic scenario snapshots and feedback.
+- `content.list/get/save/submit/publish/withdraw/feedback`: audience-scoped sessions/resources/release notes and employee experiments; publisher grants are separate from ordinary employee status.
+- `content.upload/attach/asset`: parent permission checks used by `/api/content/[id]/media` (multipart POST and audience-checked GET/byte ranges). The route bounds uploads to 20 MB and accepts MP4/WebM/PDF.
+- `teams.list/get/create/add/remove/post`: explicit employee-only team membership, owner-managed roster and private team updates.
+- `admin.organisations/members/audit`, `admin.organisation.create`, `admin.entitlement/grant/owner/publisher`: separately granted operational controls. No self-grants or platform-admin delegation; no private contribution bodies.
+
+`public.content_public(p_id uuid default null)` is an anonymous read-only RPC returning only explicitly public published content. `public.schema_version()` is an anonymous read-only integer version probe (current 6). Neither exposes private records. The database type generator includes both.
+
+Sign-in failures keep a generic public `SIGN_IN_UNAVAILABLE` message. Only actual upstream throttling maps to HTTP 429; other provider failures map to 503. Safe server diagnostics contain an allowlisted provider code/status, never raw error messages, email, tokens or credentials.
+
 All protected handlers use Node runtime, verified Supabase Auth cookies, current database membership/capability/audience/entitlement checks and `Cache-Control: private, no-store`. Browser callers should use `src/shared/client.ts`; its generic inputs/outputs match `contracts.ts`. Do not send roles, capabilities or entitlements as proof of permission. No privileged database key is used by ordinary requests.
 
 ## Authentication and envelope

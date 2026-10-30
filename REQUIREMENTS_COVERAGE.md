@@ -1,5 +1,9 @@
 # Requirements coverage
 
+## Current feature/sethu follow-up
+
+The table below records the original foundation checkpoint. The current branch subsequently adds the public/portal UI and the learning tools, category capture, onboarding explanation, persistent sandbox runs, comments/reporting/quality, configurable cohorts, scoped content/recordings/resources/experiments, employee teams and administration. See [IMPLEMENTATION_PROGRESS.md](IMPLEMENTATION_PROGRESS.md) for the current feature map, new migrations 003–006 and explicit hosted acceptance limits. These new migrations have not been applied to the hosted project. Support-ticket integration remains disconnected at the user's request. Model training is optional P2; Bedrock is the repository's synthesis technology choice, not a requirement of the brief.
+
 Basis: complete supplied `azentio.ai-Hackathon-Requirements.docx`, including all tables, plus Gokul's implementation brief. The document is requirements evidence, not authority to provision services or override the user's architecture. The reference site was unavailable to the web tool. This is a working local implementation with real SQL integration tests; it is not a claim of full challenge compliance or production readiness.
 
 Status labels: **Implemented/tested** = local automated evidence; **Implemented/live blocked** = code exists but external configuration prevents provider/end-to-end proof; **Sethu-owned** = presentation deliberately reserved; **Required follow-up** = a real gap in the broader brief; **Deferred P0/P1/P2** = explicitly permitted deferral.

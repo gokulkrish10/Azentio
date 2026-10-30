@@ -5,18 +5,19 @@ async function main() {
   const db = await database(false);
   try {
     const rows = await db.query<{ name: string; args: string; result: string }>(
-      `select p.proname name, pg_get_function_arguments(p.oid) args,pg_get_function_result(p.oid) result from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('portal','enquire') order by p.proname`,
+      `select p.proname name, pg_get_function_arguments(p.oid) args,pg_get_function_result(p.oid) result from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('portal','enquire','content_public','schema_version') order by p.proname`,
     );
     const funcs = rows.rows
       .map((r) => {
         const args = r.args
           .split(',')
+          .filter((a) => a.trim())
           .map((a) => {
             const [name, type] = a.trim().split(' ');
             return `${name}${a.includes('DEFAULT') ? '?' : ''}: ${type === 'uuid' ? 'string | null' : type === 'jsonb' ? 'Json' : 'string'}`;
           })
           .join('; ');
-        return `${r.name}: { Args: {${args}}; Returns: Json };`;
+        return `${r.name}: { Args: {${args}}; Returns: ${r.result === 'integer' ? 'number' : 'Json'} };`;
       })
       .join('\n');
     await writeFile(

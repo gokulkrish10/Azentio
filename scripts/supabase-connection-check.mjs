@@ -20,6 +20,19 @@ try {
   console.log('Auth endpoint HTTP status:', settings.status);
   if (settings.status !== 200) throw Error('AUTH_ENDPOINT');
   console.log('PASS: project URL and publishable key reach Supabase Auth (HTTP 200).');
+  stage = 'application schema version';
+  const versionClient = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: version, error: versionError } = await versionClient
+    .rpc('schema_version')
+    .abortSignal(AbortSignal.timeout(20000));
+  if (versionError || version !== 6) {
+    console.log(
+      'NOT READY: this application needs schema version 6 (migrations 003–006 after the original foundation). Review the migration instructions; do not reset or reapply the original schema.',
+    );
+    process.exitCode = 1;
+  } else console.log('PASS: application schema version 6 is installed.');
   stage = 'anonymous portal RPC';
   const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const { error } = await db

@@ -9,6 +9,25 @@ const key = { requestId: uuid };
 const target = { ...key, id: uuid };
 const date = z.iso.date();
 const period = { periodStart: date, periodEnd: date };
+export const observationCategories = [
+  'market_observation',
+  'emerging_trend',
+  'product_gap',
+  'operational_challenge',
+  'successful_practice',
+  'improvement_suggestion',
+] as const;
+export const learningFilters = z
+  .object({
+    query: text(0, 200).optional(),
+    offeringId: text(1, 60).optional(),
+    topic: text(1, 80).optional(),
+    industry: text(1, 80).optional(),
+    region: text(1, 80).optional(),
+    periodStart: date.optional(),
+    periodEnd: date.optional(),
+  })
+  .strict();
 export const consentSchema = z
   .object({
     processing: z.literal(true),
@@ -26,8 +45,147 @@ const reviewed = {
   ...period,
 };
 export const actionSchemas = {
+  'admin.organisations': z.object({}).strict(),
+  'admin.publisher': z
+    .object({
+      ...key,
+      organisationId: uuid,
+      userId: uuid,
+      targetWorkspace: uuid,
+      enabled: z.boolean(),
+    })
+    .strict(),
+  'admin.audit': z.object({}).strict(),
+  'admin.members': z.object({ organisationId: uuid }).strict(),
+  'admin.organisation.create': z
+    .object({ ...key, name: text(1, 120), kind: z.enum(['client', 'employee']) })
+    .strict(),
+  'admin.entitlement': z
+    .object({ ...key, organisationId: uuid, offeringId: text(1, 60), enabled: z.boolean() })
+    .strict(),
+  'admin.grant': z
+    .object({
+      ...key,
+      organisationId: uuid,
+      userId: uuid,
+      capability: z.enum([
+        'observations.write',
+        'learning.read',
+        'learning.report',
+        'learning.moderate',
+        'content.publish',
+        'broadcast.publish',
+        'members.manage',
+        'ideas.write',
+        'sandbox.run',
+      ]),
+      enabled: z.boolean(),
+    })
+    .strict(),
+  'admin.owner': z
+    .object({
+      ...key,
+      organisationId: uuid,
+      userId: uuid,
+      offeringId: text(1, 60),
+      enabled: z.boolean(),
+    })
+    .strict(),
+  'teams.list': z.object({}).strict(),
+  'teams.get': z.object({ id: uuid }).strict(),
+  'teams.create': z.object({ ...key, name: text(3, 100), description: text(10, 2000) }).strict(),
+  'teams.add': z.object({ ...target, userId: uuid }).strict(),
+  'teams.remove': z.object({ ...target, userId: uuid }).strict(),
+  'teams.post': z.object({ ...target, body: text(5, 3000) }).strict(),
+  'content.list': z
+    .object({ kind: z.enum(['session', 'resource', 'release_note', 'experiment']).optional() })
+    .strict(),
+  'content.get': z.object({ id: uuid }).strict(),
+  'content.asset': z.object({ id: uuid }).strict(),
+  'content.upload': z.object({ id: uuid }).strict(),
+  'content.save': z
+    .object({
+      ...key,
+      id: uuid.optional(),
+      expectedRevision: z.number().int().positive().optional(),
+      kind: z.enum(['session', 'resource', 'release_note', 'experiment']),
+      title: text(5, 160),
+      body: text(20, 12000),
+      audience: z.enum(['public', 'employee', 'organisation']),
+      targetWorkspace: uuid.optional(),
+      offeringId: text(1, 60).optional(),
+      ownerTeam: text(1, 120),
+      reviewDate: date,
+      startsAt: z.iso.datetime({ offset: true }).optional(),
+    })
+    .strict(),
+  'content.publish': z
+    .object({ ...target, expectedRevision: z.number().int().positive() })
+    .strict(),
+  'content.submit': z.object({ ...target, expectedRevision: z.number().int().positive() }).strict(),
+  'content.withdraw': z
+    .object({ ...target, expectedRevision: z.number().int().positive() })
+    .strict(),
+  'content.attach': z
+    .object({
+      ...target,
+      expectedRevision: z.number().int().positive(),
+      path: text(73, 73).regex(/^[a-f0-9-]{36}\/[a-f0-9-]{36}$/),
+      type: z.enum(['video/mp4', 'video/webm', 'application/pdf']),
+    })
+    .strict(),
+  'content.feedback': z.object({ ...target, rating: z.enum(['useful', 'needs_update']) }).strict(),
   workspaces: z.object({}).strict(),
   dashboard: z.object({}).strict(),
+  'onboarding.acknowledge': z
+    .object({ ...key, version: z.literal('sharing-v1'), understood: z.literal(true) })
+    .strict(),
+  'learning.configure': z
+    .object({ ...key, minimumOrganisations: z.number().int().min(3).max(100) })
+    .strict(),
+  'bookmarks.list': z.object({}).strict(),
+  'bookmarks.set': z.object({ ...target, saved: z.boolean() }).strict(),
+  'searches.list': z.object({}).strict(),
+  'searches.save': z.object({ ...key, name: text(1, 80), filters: learningFilters }).strict(),
+  'searches.delete': z.object(target).strict(),
+  'comments.list': z.object({ id: uuid }).strict(),
+  'comments.queue': z.object({}).strict(),
+  'comments.create': z
+    .object({ ...target, body: text(5, 2000), publicationConsent: z.literal(true) })
+    .strict(),
+  'comments.withdraw': z.object(target).strict(),
+  'comments.report': z.object({ ...target, reason: text(5, 1000) }).strict(),
+  'comments.review': z
+    .object({
+      ...target,
+      decision: z.enum(['publish', 'reject']),
+      body: text(5, 2000).optional(),
+      note: text(1, 1000),
+    })
+    .strict()
+    .refine((v) => v.decision !== 'publish' || !!v.body, 'Reviewed comment text is required'),
+  'feedback.set': z
+    .object({ ...target, assessment: z.enum(['useful', 'needs_evidence']) })
+    .strict(),
+  'quality.get': z.object({ id: uuid }).strict(),
+  'quality.set': z
+    .object({
+      ...target,
+      quality: z.enum(['strong', 'limited', 'needs_evidence']),
+      reason: text(5, 1000),
+    })
+    .strict(),
+  'sandbox.runs': z.object({}).strict(),
+  'sandbox.save': z
+    .object({
+      ...key,
+      name: text(1, 120),
+      offeringId: z.literal('financial-analysis-intelligence'),
+    })
+    .strict(),
+  'sandbox.feedback': z
+    .object({ ...target, rating: z.enum(['useful', 'needs_context']), feedback: text(0, 1000) })
+    .strict(),
   'observations.list': z.object(page).strict(),
   'observations.history': z.object({ ...page, id: uuid }).strict(),
   'observations.save': z
@@ -36,6 +194,7 @@ export const actionSchemas = {
       id: uuid.optional(),
       expectedRevision: z.number().int().positive().optional(),
       ...reviewed,
+      category: z.enum(observationCategories).default('market_observation'),
       offeringId: text(1, 60),
       evidenceType: z.enum(['synthetic scenario', 'operational observation', 'research summary']),
       confidence: z.enum(['low', 'medium', 'high']),
@@ -165,7 +324,27 @@ export interface Workspace {
   kind: 'client' | 'employee';
   role: 'client_member' | 'client_admin' | 'employee';
 }
+export interface ContentItem {
+  id: string;
+  kind: 'session' | 'resource' | 'release_note' | 'experiment';
+  title: string;
+  body: string;
+  audience: 'public' | 'employee' | 'organisation';
+  offeringId: string | null;
+  ownerTeam: string;
+  reviewDate: string;
+  startsAt: string | null;
+  revision: number;
+  state: 'draft' | 'submitted' | 'published' | 'withdrawn';
+  hasMedia: boolean;
+  updatedAt: string;
+  canEdit?: boolean;
+  canPublish?: boolean;
+  targetWorkspace?: string | null;
+  mediaType?: string | null;
+}
 export interface Revision {
+  category: (typeof observationCategories)[number];
   source_audience: 'private' | 'organisation';
   observation_id: string;
   version: number;
@@ -200,13 +379,14 @@ export interface ReviewItem {
   reports: { id: string; publicationId: string; reason: string; state: string }[];
 }
 export interface Dashboard {
+  onboarding?: { version: 'sharing-v1'; acknowledged: boolean };
   workspaceId: string;
   capabilities: string[];
   offerings: { id: string; title: string }[];
   contributionCount: number;
-  sessions: unknown[];
-  experiments: unknown[];
-  resources: unknown[];
+  sessions: ContentItem[];
+  experiments: ContentItem[];
+  resources: ContentItem[];
 }
 export interface Theme {
   id: string;
@@ -260,6 +440,111 @@ export interface MutationResult {
   emailSent?: false;
 }
 export interface ActionOutput {
+  'admin.organisations': {
+    items: { id: string; name: string; kind: string }[];
+    offerings: { id: string; title: string }[];
+  };
+  'admin.members': {
+    items: {
+      id: string;
+      role: string;
+      approved: boolean;
+      revoked: boolean;
+      capabilities: string[];
+    }[];
+    entitlements: { offeringId: string; enabled: boolean }[];
+  };
+  'admin.audit': {
+    items: {
+      id: string;
+      actor_id: string;
+      organisation_id: string | null;
+      action: string;
+      resource_id: string | null;
+      created_at: string;
+    }[];
+  };
+  'admin.organisation.create': MutationResult;
+  'admin.publisher': MutationResult;
+  'admin.entitlement': MutationResult;
+  'admin.grant': MutationResult;
+  'admin.owner': MutationResult;
+  'teams.list': { items: { id: string; name: string; description: string; owner: boolean }[] };
+  'teams.get': {
+    id: string;
+    name: string;
+    description: string;
+    owner: boolean;
+    members: { id: string; owner: boolean }[];
+    posts: { id: string; body: string; own: boolean; createdAt: string }[];
+  };
+  'teams.create': MutationResult;
+  'teams.add': MutationResult;
+  'teams.remove': MutationResult;
+  'teams.post': MutationResult;
+  'content.list': { items: ContentItem[] };
+  'content.get': ContentItem;
+  'content.asset': { path: string; type: string };
+  'content.upload': { id: string; revision: number };
+  'content.save': MutationResult;
+  'content.publish': MutationResult;
+  'content.submit': MutationResult;
+  'content.withdraw': MutationResult;
+  'content.attach': MutationResult;
+  'content.feedback': MutationResult;
+  'onboarding.acknowledge': MutationResult;
+  'learning.configure': MutationResult;
+  'bookmarks.list': { items: SharedPublication[] };
+  'bookmarks.set': MutationResult;
+  'searches.list': {
+    items: { id: string; name: string; filters: z.infer<typeof learningFilters> }[];
+  };
+  'searches.save': MutationResult;
+  'searches.delete': MutationResult;
+  'comments.list': {
+    items: {
+      id: string;
+      body: string;
+      state: string;
+      own: boolean;
+      decision: string | null;
+      createdAt: string;
+    }[];
+  };
+  'comments.queue': {
+    items: {
+      id: string;
+      publicationId: string;
+      publicationTitle: string;
+      body: string;
+      state: string;
+      reports: string[];
+      created_at: string;
+    }[];
+  };
+  'comments.create': MutationResult;
+  'comments.withdraw': MutationResult;
+  'comments.report': MutationResult;
+  'comments.review': MutationResult;
+  'feedback.set': MutationResult;
+  'quality.get': {
+    assessment: { quality: string; reason: string; updatedAt: string } | null;
+    yourFeedback: 'useful' | 'needs_evidence' | null;
+  };
+  'quality.set': MutationResult;
+  'sandbox.runs': {
+    items: {
+      id: string;
+      name: string;
+      offeringId: string;
+      result: ActionOutput['sandbox.run'];
+      rating: string | null;
+      feedback: string | null;
+      created_at: string;
+    }[];
+  };
+  'sandbox.save': MutationResult;
+  'sandbox.feedback': MutationResult;
   workspaces: { items: Workspace[] };
   dashboard: Dashboard;
   'observations.list': { items: Observation[] };
@@ -279,7 +564,7 @@ export interface ActionOutput {
   'moderation.list': { items: ReviewItem[] };
   'moderation.decide': MutationResult;
   'learning.list': { items: SharedPublication[]; page: number; pageSize: number };
-  'themes.list': { items: Theme[] };
+  'themes.list': { items: Theme[]; minimumOrganisations: number };
   'ideas.list': { items: Idea[] };
   'ideas.create': MutationResult;
   'ideas.update': MutationResult;

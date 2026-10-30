@@ -9,7 +9,7 @@ export function WorkspacePicker({ items }: { items: Workspace[] }) {
       <div className="grid">
         {items.map((w) => (
           <Link
-            href={`/workspace/${w.id}`}
+            href={`/workspace/${w.id}/dashboard`}
             key={w.id}
             className="panel"
             style={{ textDecoration: 'none', color: 'inherit' }}

@@ -1,11 +1,11 @@
 :root {
   color-scheme: dark;
-  --bg: #081321;
-  --panel: #101f30;
-  --border: #2c4054;
-  --text: #eff5fa;
-  --muted: #aebdce;
-  --green: #8fe0b4;
+  --bg: #09151d;
+  --panel: #10232c;
+  --border: #2a3e46;
+  --text: #f0f3ed;
+  --muted: #abbab9;
+  --green: #c0ee81;
   --danger: #ffb1a5;
 }
 * {
@@ -16,7 +16,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font:
-    16px/1.6 Arial,
+    15px/1.65 Arial,
     Helvetica,
     sans-serif;
 }
@@ -56,9 +56,9 @@ nav {
   font-size: 14px;
 }
 main {
-  max-width: 1120px;
+  max-width: 1360px;
   margin: auto;
-  padding: 56px 28px;
+  padding: 44px 48px 64px;
   min-height: 76vh;
 }
 h1 {

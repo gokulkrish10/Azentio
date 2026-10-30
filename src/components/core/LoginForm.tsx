@@ -16,7 +16,14 @@ export function LoginForm() {
             body: JSON.stringify({ email }),
           });
           const d = await r.json();
-          setMessage(d.message || d.error?.code || 'Sign-in unavailable');
+          setMessage(
+            d.message ||
+              (d.error?.code === 'ORIGIN_DENIED'
+                ? 'This page address does not match the configured sign-in address. Open the address provided by your organiser.'
+                : r.status === 429
+                  ? 'Sign-in requests are temporarily limited. Wait before trying again; contact your organiser if this continues.'
+                  : 'Sign-in is unavailable. Ask your organiser to check your approved account and email delivery setup.'),
+          );
         } catch {
           setMessage('Sign-in unavailable. Please try again.');
         } finally {

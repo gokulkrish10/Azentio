@@ -12,7 +12,7 @@
     "build": "next build --webpack",
     "start": "next start --hostname 0.0.0.0",
     "typecheck": "tsc --noEmit",
-    "test": "node --conditions=react-server --import tsx --test tests/*.test.ts",
+    "test": "node --conditions=react-server --import tsx --test --test-concurrency=1 tests/*.test.ts",
     "db:types": "node --import tsx scripts/generate-types.ts",
     "test:hosted": "node --import tsx scripts/hosted-smoke.ts",
     "check:connection": "node scripts/supabase-connection-check.mjs",
