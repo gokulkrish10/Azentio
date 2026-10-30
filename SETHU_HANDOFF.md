@@ -6,16 +6,16 @@ Gokul's work is local on `feature/gokul-core`. Review the tested foundation and 
 
 ## Exact ownership
 
-| Paths | Owner and coordination |
-| --- | --- |
-| `src/server/**`, `src/app/api/**`, `src/app/auth/**`, `src/proxy.ts` | Gokul: identity, transactions, permissions, AIRA |
-| `supabase/**`, `scripts/**`, `tests/**`, runtime/Docker configs | Gokul |
-| `src/shared/contracts.ts`, `database.types.ts`, `client.ts`, `fixtures.ts` | Shared contract boundary; coordinate any change with Gokul |
-| `src/app/login/**`, `src/app/workspaces/**`, `src/app/workspace/[id]/page.tsx`, `src/app/workspace/[id]/moderation/**`, `src/components/core/**` | Gokul functional screens; coordinate later visual improvements |
-| `src/app/page.tsx`, future `src/app/catalogue/**`, `src/app/solutions/**`, `src/app/about/**`, `src/components/public/**` | Sethu public homepage, catalogue, navigation, media presentation |
-| Future `src/app/workspace/[id]/dashboard/**`, `employee/**`, `learning/**`, `themes/**`, `ideas/**`, `members/**`, `notifications/**`, `src/components/portal/**` | Sethu dashboards and presentation using existing APIs |
-| Future `src/app/request-demo/**`, `src/app/events/**` | Sethu form presentation → `/api/enquiries` |
-| `src/app/layout.tsx`, `globals.css`, `next.config.ts`, `package.json`, lockfile | Shared; coordinate shell/tokens/dependency changes |
+| Paths                                                                                                                                                             | Owner and coordination                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `src/server/**`, `src/app/api/**`, `src/app/auth/**`, `src/proxy.ts`                                                                                              | Gokul: identity, transactions, permissions, AIRA                 |
+| `supabase/**`, `scripts/**`, `tests/**`, runtime/Docker configs                                                                                                   | Gokul                                                            |
+| `src/shared/contracts.ts`, `database.types.ts`, `client.ts`, `fixtures.ts`                                                                                        | Shared contract boundary; coordinate any change with Gokul       |
+| `src/app/login/**`, `src/app/workspaces/**`, `src/app/workspace/[id]/page.tsx`, `src/app/workspace/[id]/moderation/**`, `src/components/core/**`                  | Gokul functional screens; coordinate later visual improvements   |
+| `src/app/page.tsx`, future `src/app/catalogue/**`, `src/app/solutions/**`, `src/app/about/**`, `src/components/public/**`                                         | Sethu public homepage, catalogue, navigation, media presentation |
+| Future `src/app/workspace/[id]/dashboard/**`, `employee/**`, `learning/**`, `themes/**`, `ideas/**`, `members/**`, `notifications/**`, `src/components/portal/**` | Sethu dashboards and presentation using existing APIs            |
+| Future `src/app/request-demo/**`, `src/app/events/**`                                                                                                             | Sethu form presentation → `/api/enquiries`                       |
+| `src/app/layout.tsx`, `globals.css`, `next.config.ts`, `package.json`, lockfile                                                                                   | Shared; coordinate shell/tokens/dependency changes               |
 
 Future paths above are reserved ownership locations, not claims that pages already exist. Keep presentation in components and backend imports out of client components. Do not independently change auth, RLS, schemas, moderation transitions or AI permissions.
 
@@ -30,7 +30,7 @@ The unconfigured shell works without secrets. `src/shared/fixtures.ts` is a clea
 Use `call(action, workspaceId, payload)` from `src/shared/client.ts`; request and response types are in `contracts.ts`. It sends a same-origin JSON POST and surfaces stable error codes. See API.md for every action. Client inputs are validated again by server and database; hiding controls is not authorisation.
 
 - Workspaces/dashboard: active organisation, grants, entitled offerings and own contribution count. Sessions, experiments and resources currently return empty arrays and are explicit remaining backend work.
-- Observations and moderation: functional Gokul screens already provided.
+- Observations and moderation: functional Gokul screens already provided, including author revision/consent history and author/moderator withdrawal.
 - Learning: approved feed with page, offering/topic/industry/region/period/search filters; implement Next/Previous using pageSize and an empty next page.
 - Themes: live safe cohort counts/evidence; only offering filter. Empty means suppressed or no eligible cohort. Never infer missing counts or build arbitrary breakdowns from this API.
 - Ideas: list safe fields/evidence, create with offering assignment and independent evidence permission, update status. Use the six allowed statuses; Under review is not a delivery promise.

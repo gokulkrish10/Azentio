@@ -16,14 +16,14 @@ No Supabase service-role key is needed by the application. No `.env.local` is re
 
 ## Commands
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Hot reload on `0.0.0.0:3000` |
-| `npm run typecheck` | TypeScript check |
-| `npm test` | Isolated PostgreSQL SQL/RLS integration and AIRA/contract tests |
-| `npm run db:types` | Generate public RPC types from the applied migration catalog |
-| `npm run build` | Native Next.js production build |
-| `npm run start` | Serve the production build |
+| Command               | Purpose                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------ |
+| `npm run dev`         | Hot reload on `0.0.0.0:3000`                                                               |
+| `npm run typecheck`   | TypeScript check                                                                           |
+| `npm test`            | Isolated PostgreSQL SQL/RLS integration and AIRA/contract tests                            |
+| `npm run db:types`    | Generate public RPC types from the applied migration catalog                               |
+| `npm run build`       | Native Next.js production build                                                            |
+| `npm run start`       | Serve the production build                                                                 |
 | `npm run test:hosted` | Explicit authenticated hosted smoke check; requires separately configured test credentials |
 
 Tests use PGlite's PostgreSQL engine, with a test-only `auth.users` / `auth.uid()` compatibility layer. They do not emulate or verify Supabase Auth, SMTP, PostgREST, production concurrency across processes, or AWS. These require live acceptance checks.

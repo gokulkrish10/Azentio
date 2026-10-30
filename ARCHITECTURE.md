@@ -16,17 +16,17 @@ The public RPC signature is generated from the real applied PostgreSQL catalog. 
 
 ## Observation lifecycle
 
-| Action | Actor | State condition | Result |
-| --- | --- | --- | --- |
-| Save | Source author, current membership, observations.write, entitlement | New / draft / clarification / rejected / published | New immutable revision, draft state; existing publication removed |
-| Submit | Same author | Draft / clarification / rejected; exact current revision; processing + publication consent | Submitted revision pointer locked |
-| Clarify / reject | Approved employee moderator + entitlement | Submitted; exact submitted revision | Recorded decision, author notification |
-| Publish | Same moderator | Submitted; exact revision and consent | Reviewed copy in separate publication table; published state |
-| Suspend | Same moderator | Published | Available=false; recorded decision |
-| Withdraw | Source author | Any existing source state | Withdrawn; all publications unavailable |
-| Resolve report | Moderator + entitlement | Matching current, nonwithdrawn revision | Recorded resolution, keep unavailable or restore |
+| Action           | Actor                                                                     | State condition                                                                            | Result                                                            |
+| ---------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| Save             | Source author, current membership, observations.write, entitlement        | New / draft / clarification / rejected / published                                         | New immutable revision, draft state; existing publication removed |
+| Submit           | Same author                                                               | Draft / clarification / rejected; exact current revision; processing + publication consent | Submitted revision pointer locked                                 |
+| Clarify / reject | Approved employee moderator + entitlement                                 | Submitted; exact submitted revision                                                        | Recorded decision, author notification                            |
+| Publish          | Same moderator                                                            | Submitted; exact revision and consent                                                      | Reviewed copy in separate publication table; published state      |
+| Suspend          | Same moderator                                                            | Published                                                                                  | Available=false; recorded decision                                |
+| Withdraw         | Source author, or moderator with submitted/published source + entitlement | Author: any existing source state; moderator: exact reviewed revision                      | Withdrawn; all publications unavailable                           |
+| Resolve report   | Moderator + entitlement                                                   | Matching current, nonwithdrawn revision                                                    | Recorded resolution, keep unavailable or restore                  |
 
-Rejected material is amended as a new revision before a meaningful resubmission. Submission locks the snapshot, not only the form. A published edit immediately removes its previous shared copy; renewed consent and review are required. Saving defaults to author-only unless the author explicitly chooses organisation visibility. Community consent alone does not submit or publish. Consent fields are independent; training defaults off and no training is implemented.
+Rejected material is amended as a new revision before a meaningful resubmission. Submission locks the snapshot, not only the form. A published edit immediately removes its previous shared copy; renewed consent and review are required. Saving defaults to author-only unless the author explicitly chooses organisation visibility. Each revision records its source audience; organisation sharing never broadens older private revisions. Authors can inspect revision/consent history. Community consent alone does not submit or publish. Consent fields are independent; training defaults off and no training is implemented.
 
 All mutation acknowledgements use per-actor/workspace/action UUID request IDs, advisory locks and transaction-local writes. Publications additionally have revision uniqueness and one-available-copy uniqueness. Decisions and notifications commit together. Reuse the request ID on network retries; a new ID is a new request. Existing replay acknowledgements contain no private text. Invitation acceptance locks its row, checks expiry/account/organisation and consumes it once.
 
@@ -34,7 +34,7 @@ All mutation acknowledgements use per-actor/workspace/action UUID request IDs, a
 
 Private sources never feed shared indexes or Bedrock. `private.shared` constructs a strict allowlist: public publication ID, reviewed text/taxonomy, broad observation period, confidence, evidence type, reviewed attribution and publication date. Source IDs, tenant IDs, profiles, evidence links and moderator notes never appear in shared payloads. The full-text index covers reviewed copies only. Approved content still requires careful human privacy review; de-identification and the three-organisation rule are not anonymity guarantees.
 
-Feed pagination/filtering happens after eligibility checks. There is no unfiltered count, autocomplete, export or suggestion endpoint. Themes count distinct eligible organisations, suppress below three, and permit only offering-level filtering. No geography/time/industry cohort breakdowns are supported. Aggregates and evidence are computed live. Ideas store evidence references, not excerpts; every read rebuilds permitted evidence and hides ideas with no currently eligible evidence. Idea title/problem/outcome/team are explicitly shared fields; owners must never put private tickets, roadmaps or delivery promises there.
+Feed pagination/filtering happens after eligibility checks. There is no unfiltered count, autocomplete, export or suggestion endpoint. Themes count distinct eligible synthetic client organisations, suppress below three, and permit only offering-level filtering. No geography/time/industry cohort breakdowns are supported. Aggregates and evidence are computed live. Ideas store evidence references, not excerpts; every read rebuilds permitted evidence and hides ideas with no currently eligible evidence. Idea title/problem/outcome/team are explicitly shared fields; owners must never put private tickets, roadmaps or delivery promises there.
 
 Withdrawal updates source and publication availability in one transaction. Subsequent feed/search/theme/idea/AI queries exclude it synchronously; there is no application cache or persisted generated summary. AIRA rechecks citations after the provider returns. Content already viewed or copied cannot be recalled; no claim of reversing training is made.
 

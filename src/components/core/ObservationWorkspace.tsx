@@ -1,24 +1,400 @@
 'use client';
-import {useState} from 'react';
-import {useRouter} from 'next/navigation';
-import type {Dashboard,Observation,ActionInput} from '@/shared/contracts';
-import {call} from '@/shared/client';
-const initial={title:'',body:'',offeringId:'',topic:'seasonality',industry:'Financial services',region:'Broad synthetic region',periodStart:'2026-01-01',periodEnd:'2026-06-30',evidenceType:'synthetic scenario',confidence:'medium',evidenceUrl:'',audience:'private'};
-export function ObservationWorkspace({workspaceId,userId,dashboard,items}:{workspaceId:string;userId:string;dashboard:Dashboard;items:Observation[]}){
- const router=useRouter(),[edit,setEdit]=useState<Observation|null>(null),[fields,setFields]=useState({...initial,offeringId:dashboard.offerings[0]?.id||''}),[consent,setConsent]=useState({processing:false,publication:false,attribution:false,training:false}),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
- function field(k:keyof typeof fields,v:string){setFields(f=>({...f,[k]:v}));}
- async function action(run:()=>Promise<unknown>,success:string){setBusy(true);setMessage('');try{await run();setMessage(success);router.refresh();}catch(e){setMessage(e instanceof Error?e.message:'Request failed');}finally{setBusy(false);}}
- function start(o:Observation){const r=o.revision;setEdit(o);setFields({title:r.title,body:r.body,offeringId:r.offering_id,topic:r.topic,industry:r.industry,region:r.region,periodStart:r.period_start,periodEnd:r.period_end,evidenceType:r.evidence_type,confidence:r.confidence,evidenceUrl:r.evidence_url||'',audience:o.source_audience});setConsent({processing:false,publication:false,attribution:false,training:false});document.getElementById('observation-form')?.scrollIntoView({behavior:'instant'});}
- return <>{message&&<p className="message" role="status">{message}</p>}<section className="panel" id="observation-form"><span className="eyebrow">Private first</span><h2>{edit?'Save a new revision':'Record an observation'}</h2><p className="muted">Use synthetic data only. Exclude customer identities, account numbers, transactions, credentials, pricing and contractual terms. Warnings do not guarantee anonymity.</p>{!dashboard.offerings.length?<p className="message">No offerings are entitled in this workspace. Ask your organiser to assign access.</p>:<form onSubmit={e=>{e.preventDefault();void action(async()=>{const payload={...fields,requestId:crypto.randomUUID(),...(edit?{id:edit.id,expectedRevision:edit.current_revision}:{}),consent} as ActionInput<'observations.save'>;await call('observations.save',workspaceId,payload);setEdit(null);setFields({...initial,offeringId:dashboard.offerings[0].id});setConsent({processing:false,publication:false,attribution:false,training:false});},'Saved as a private draft. Submit separately if you want moderator review.');}}>
- <label htmlFor="title">Title</label><input id="title" value={fields.title} onChange={e=>field('title',e.target.value)} required minLength={5} maxLength={160}/>
- <label htmlFor="body">Observation</label><textarea id="body" value={fields.body} onChange={e=>field('body',e.target.value)} required minLength={20} maxLength={6000}/>
- <div className="grid"><div><label htmlFor="offering">Offering</label><select id="offering" value={fields.offeringId} onChange={e=>field('offeringId',e.target.value)}>{dashboard.offerings.map(o=><option key={o.id} value={o.id}>{o.title}</option>)}</select></div><div><label htmlFor="topic">Topic</label><input id="topic" value={fields.topic} onChange={e=>field('topic',e.target.value)} required maxLength={80}/></div></div>
- <div className="grid">{(['industry','region'] as const).map(k=><div key={k}><label htmlFor={k}>{k==='industry'?'Industry':'Region'}</label><input id={k} value={fields[k]} onChange={e=>field(k,e.target.value)} required maxLength={80}/></div>)}</div>
- <div className="grid">{(['periodStart','periodEnd'] as const).map(k=><div key={k}><label htmlFor={k}>{k==='periodStart'?'Observation period start':'Observation period end'}</label><input id={k} type="date" value={fields[k]} onChange={e=>field(k,e.target.value)} min={k==='periodEnd'?fields.periodStart:undefined} required/></div>)}</div>
- <div className="grid"><div><label htmlFor="evidenceType">Evidence type</label><select id="evidenceType" value={fields.evidenceType} onChange={e=>field('evidenceType',e.target.value)}>{['synthetic scenario','operational observation','research summary'].map(x=><option key={x}>{x}</option>)}</select></div><div><label htmlFor="confidence">Confidence</label><select id="confidence" value={fields.confidence} onChange={e=>field('confidence',e.target.value)}>{['low','medium','high'].map(x=><option key={x}>{x}</option>)}</select></div></div>
- <label htmlFor="evidenceUrl">Evidence link (optional, HTTPS)</label><input id="evidenceUrl" type="url" value={fields.evidenceUrl} onChange={e=>field('evidenceUrl',e.target.value)} maxLength={1000} placeholder="https://example.com/evidence"/><small>Links stay with the private source. We do not fetch them automatically.</small>
- <label htmlFor="audience">Who can see the source?</label><select id="audience" value={fields.audience} onChange={e=>field('audience',e.target.value)}><option value="private">Only me</option><option value="organisation">Approved members of my organisation</option></select><p className="muted">Changing this choice to organisation explicitly shares the source within your organisation. Proposed community sharing below requires a separate submission and review.</p>
- {(['processing','publication','attribution','training'] as const).map(k=><label key={k} className="check"><input type="checkbox" checked={consent[k]} required={k==='processing'} onChange={e=>setConsent(c=>({...c,[k]:e.target.checked}))}/>{({processing:'I permit storing and processing this contribution (required).',publication:'I permit a reviewed copy to be proposed for community publication.',attribution:'I permit attribution only if it also passes moderator review.',training:'I opt in to consideration for a future training programme. No training runs in this demo.'})[k]}</label>)}
- <p className="muted">Saving does not submit or publish. Editing a published contribution removes the previous shared copy and requires new review. Withdrawal prevents future access; it cannot recall copies already viewed.</p><div className="row"><button disabled={busy}>{busy?'Saving…':'Save draft'}</button>{edit&&<button type="button" className="secondary" onClick={()=>{setEdit(null);setFields({...initial,offeringId:dashboard.offerings[0].id});setConsent({processing:false,publication:false,attribution:false,training:false});}}>Cancel edit</button>}</div></form>}</section>
- <h2>My and organisation observations</h2><p className="muted">Private sources and review history. These are separate from the approved shared feed.</p>{items.map(o=><article className="panel" key={o.id}><div className="row between"><h3>{o.revision.title}</h3><span className="badge">{o.state} · revision {o.current_revision}</span></div><p className="prose">{o.revision.body}</p><p className="muted">Source: {o.source_audience==='private'?'author only':'organisation'} · {o.revision.period_start} to {o.revision.period_end}</p>{o.decisions?.map((d,i)=><p className="message" key={i}>Review of revision {d.version}: {d.action} — {d.note}</p>)}{o.author_id===userId&&<div className="row">{['draft','clarification','rejected','published'].includes(o.state)&&<button className="secondary" disabled={busy} onClick={()=>start(o)}>Edit as new revision</button>}{['draft','clarification','rejected'].includes(o.state)&&<button disabled={busy} onClick={()=>void action(()=>call('observations.submit',workspaceId,{id:o.id,expectedRevision:o.current_revision,requestId:crypto.randomUUID()}),'Submitted for review. Your current revision is locked.')}>Submit for review</button>}{o.state!=='withdrawn'&&<button className="danger" disabled={busy} onClick={()=>void action(()=>call('observations.withdraw',workspaceId,{id:o.id,requestId:crypto.randomUUID()}),'Withdrawn. Future shared reads and AIRA retrieval exclude this contribution.')}>Withdraw</button>}</div>}</article>)}{!items.length&&<p className="message">No observations yet. Start with a private draft above.</p>}</>;
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import type { Dashboard, Observation, ActionInput, ActionOutput } from '@/shared/contracts';
+import { call } from '@/shared/client';
+const initial = {
+  title: '',
+  body: '',
+  offeringId: '',
+  topic: 'seasonality',
+  industry: 'Financial services',
+  region: 'Broad synthetic region',
+  periodStart: '2026-01-01',
+  periodEnd: '2026-06-30',
+  evidenceType: 'synthetic scenario',
+  confidence: 'medium',
+  evidenceUrl: '',
+  audience: 'private',
+};
+export function ObservationWorkspace({
+  workspaceId,
+  userId,
+  dashboard,
+  items,
+}: {
+  workspaceId: string;
+  userId: string;
+  dashboard: Dashboard;
+  items: Observation[];
+}) {
+  const router = useRouter(),
+    [edit, setEdit] = useState<Observation | null>(null),
+    [fields, setFields] = useState({ ...initial, offeringId: dashboard.offerings[0]?.id || '' }),
+    [consent, setConsent] = useState({
+      processing: false,
+      publication: false,
+      attribution: false,
+      training: false,
+    }),
+    [message, setMessage] = useState(''),
+    [busy, setBusy] = useState(false),
+    [history, setHistory] = useState<Record<string, ActionOutput['observations.history']['items']>>(
+      {},
+    );
+  function field(k: keyof typeof fields, v: string) {
+    setFields((f) => ({ ...f, [k]: v }));
+  }
+  async function action(run: () => Promise<unknown>, success: string) {
+    setBusy(true);
+    setMessage('');
+    try {
+      await run();
+      setMessage(success);
+      router.refresh();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Request failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+  function start(o: Observation) {
+    const r = o.revision;
+    setEdit(o);
+    setFields({
+      title: r.title,
+      body: r.body,
+      offeringId: r.offering_id,
+      topic: r.topic,
+      industry: r.industry,
+      region: r.region,
+      periodStart: r.period_start,
+      periodEnd: r.period_end,
+      evidenceType: r.evidence_type,
+      confidence: r.confidence,
+      evidenceUrl: r.evidence_url || '',
+      audience: o.source_audience,
+    });
+    setConsent({ processing: false, publication: false, attribution: false, training: false });
+    document.getElementById('observation-form')?.scrollIntoView({ behavior: 'instant' });
+  }
+  return (
+    <>
+      {message && (
+        <p className="message" role="status">
+          {message}
+        </p>
+      )}
+      <section className="panel" id="observation-form">
+        <span className="eyebrow">Private first</span>
+        <h2>{edit ? 'Save a new revision' : 'Record an observation'}</h2>
+        <p className="muted">
+          Use synthetic data only. Exclude customer identities, account numbers, transactions,
+          credentials, pricing and contractual terms. Warnings do not guarantee anonymity.
+        </p>
+        {!dashboard.offerings.length ? (
+          <p className="message">
+            No offerings are entitled in this workspace. Ask your organiser to assign access.
+          </p>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void action(async () => {
+                const payload = {
+                  ...fields,
+                  requestId: crypto.randomUUID(),
+                  ...(edit ? { id: edit.id, expectedRevision: edit.current_revision } : {}),
+                  consent,
+                } as ActionInput<'observations.save'>;
+                await call('observations.save', workspaceId, payload);
+                setEdit(null);
+                setFields({ ...initial, offeringId: dashboard.offerings[0].id });
+                setConsent({
+                  processing: false,
+                  publication: false,
+                  attribution: false,
+                  training: false,
+                });
+              }, 'Saved as a draft in the selected source audience. Submit separately for community review.');
+            }}
+          >
+            <label htmlFor="title">Title</label>
+            <input
+              id="title"
+              value={fields.title}
+              onChange={(e) => field('title', e.target.value)}
+              required
+              minLength={5}
+              maxLength={160}
+            />
+            <label htmlFor="body">Observation</label>
+            <textarea
+              id="body"
+              value={fields.body}
+              onChange={(e) => field('body', e.target.value)}
+              required
+              minLength={20}
+              maxLength={6000}
+            />
+            <div className="grid">
+              <div>
+                <label htmlFor="offering">Offering</label>
+                <select
+                  id="offering"
+                  value={fields.offeringId}
+                  onChange={(e) => field('offeringId', e.target.value)}
+                >
+                  {dashboard.offerings.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="topic">Topic</label>
+                <input
+                  id="topic"
+                  value={fields.topic}
+                  onChange={(e) => field('topic', e.target.value)}
+                  required
+                  maxLength={80}
+                />
+              </div>
+            </div>
+            <div className="grid">
+              {(['industry', 'region'] as const).map((k) => (
+                <div key={k}>
+                  <label htmlFor={k}>{k === 'industry' ? 'Industry' : 'Region'}</label>
+                  <input
+                    id={k}
+                    value={fields[k]}
+                    onChange={(e) => field(k, e.target.value)}
+                    required
+                    maxLength={80}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="grid">
+              {(['periodStart', 'periodEnd'] as const).map((k) => (
+                <div key={k}>
+                  <label htmlFor={k}>
+                    {k === 'periodStart' ? 'Observation period start' : 'Observation period end'}
+                  </label>
+                  <input
+                    id={k}
+                    type="date"
+                    value={fields[k]}
+                    onChange={(e) => field(k, e.target.value)}
+                    min={k === 'periodEnd' ? fields.periodStart : undefined}
+                    required
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="grid">
+              <div>
+                <label htmlFor="evidenceType">Evidence type</label>
+                <select
+                  id="evidenceType"
+                  value={fields.evidenceType}
+                  onChange={(e) => field('evidenceType', e.target.value)}
+                >
+                  {['synthetic scenario', 'operational observation', 'research summary'].map(
+                    (x) => (
+                      <option key={x}>{x}</option>
+                    ),
+                  )}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="confidence">Confidence</label>
+                <select
+                  id="confidence"
+                  value={fields.confidence}
+                  onChange={(e) => field('confidence', e.target.value)}
+                >
+                  {['low', 'medium', 'high'].map((x) => (
+                    <option key={x}>{x}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <label htmlFor="evidenceUrl">Evidence link (optional, HTTPS)</label>
+            <input
+              id="evidenceUrl"
+              type="url"
+              value={fields.evidenceUrl}
+              onChange={(e) => field('evidenceUrl', e.target.value)}
+              maxLength={1000}
+              placeholder="https://example.com/evidence"
+            />
+            <small>Links stay with the private source. We do not fetch them automatically.</small>
+            <label htmlFor="audience">Who can see the source?</label>
+            <select
+              id="audience"
+              value={fields.audience}
+              onChange={(e) => field('audience', e.target.value)}
+            >
+              <option value="private">Only me</option>
+              <option value="organisation">Approved members of my organisation</option>
+            </select>
+            <p className="muted">
+              Changing this choice to organisation explicitly shares the source within your
+              organisation. Proposed community sharing below requires a separate submission and
+              review.
+            </p>
+            {(['processing', 'publication', 'attribution', 'training'] as const).map((k) => (
+              <label key={k} className="check">
+                <input
+                  type="checkbox"
+                  checked={consent[k]}
+                  required={k === 'processing'}
+                  onChange={(e) => setConsent((c) => ({ ...c, [k]: e.target.checked }))}
+                />
+                {
+                  {
+                    processing: 'I permit storing and processing this contribution (required).',
+                    publication:
+                      'I permit a reviewed copy to be proposed for community publication.',
+                    attribution: 'I permit attribution only if it also passes moderator review.',
+                    training:
+                      'I opt in to consideration for a future training programme. No training runs in this demo.',
+                  }[k]
+                }
+              </label>
+            ))}
+            <p className="muted">
+              Saving does not submit or publish. Editing a published contribution removes the
+              previous shared copy and requires new review. Withdrawal prevents future access; it
+              cannot recall copies already viewed.
+            </p>
+            <div className="row">
+              <button disabled={busy}>{busy ? 'Saving…' : 'Save draft'}</button>
+              {edit && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setEdit(null);
+                    setFields({ ...initial, offeringId: dashboard.offerings[0].id });
+                    setConsent({
+                      processing: false,
+                      publication: false,
+                      attribution: false,
+                      training: false,
+                    });
+                  }}
+                >
+                  Cancel edit
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+      </section>
+      <h2>My and organisation observations</h2>
+      <p className="muted">
+        Private sources and review history. These are separate from the approved shared feed.
+      </p>
+      {items.map((o) => (
+        <article className="panel" key={o.id}>
+          <div className="row between">
+            <h3>{o.revision.title}</h3>
+            <span className="badge">
+              {o.state} · revision {o.current_revision}
+            </span>
+          </div>
+          <p className="prose">{o.revision.body}</p>
+          <p className="muted">
+            Source: {o.source_audience === 'private' ? 'author only' : 'organisation'} ·{' '}
+            {o.revision.period_start} to {o.revision.period_end}
+          </p>
+          {o.decisions?.map((d, i) => (
+            <p className="message" key={i}>
+              Review of revision {d.version}: {d.action} — {d.note}
+            </p>
+          ))}
+          {o.author_id === userId && (
+            <>
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() =>
+                  void action(async () => {
+                    const h = await call('observations.history', workspaceId, { id: o.id });
+                    setHistory((old) => ({ ...old, [o.id]: h.items }));
+                  }, 'Revision history loaded.')
+                }
+              >
+                View revision and consent history
+              </button>
+              {history[o.id]?.map((h) => (
+                <details key={h.version}>
+                  <summary>
+                    Revision {h.version} ·{' '}
+                    {h.source_audience === 'private' ? 'author only' : 'organisation'}
+                  </summary>
+                  <p className="prose">{h.body}</p>
+                  <p className="muted">
+                    Processing: {String(h.consent.processing)} · Reviewed publication:{' '}
+                    {String(h.consent.publication)} · Attribution: {String(h.consent.attribution)} ·
+                    Future training: {String(h.consent.training)}
+                  </p>
+                </details>
+              ))}
+              <div className="row">
+                {['draft', 'clarification', 'rejected', 'published'].includes(o.state) && (
+                  <button className="secondary" disabled={busy} onClick={() => start(o)}>
+                    Edit as new revision
+                  </button>
+                )}
+                {['draft', 'clarification', 'rejected'].includes(o.state) && (
+                  <button
+                    disabled={busy}
+                    onClick={() =>
+                      void action(
+                        () =>
+                          call('observations.submit', workspaceId, {
+                            id: o.id,
+                            expectedRevision: o.current_revision,
+                            requestId: crypto.randomUUID(),
+                          }),
+                        'Submitted for review. Your current revision is locked.',
+                      )
+                    }
+                  >
+                    Submit for review
+                  </button>
+                )}
+                {o.state !== 'withdrawn' && (
+                  <button
+                    className="danger"
+                    disabled={busy}
+                    onClick={() =>
+                      void action(
+                        () =>
+                          call('observations.withdraw', workspaceId, {
+                            id: o.id,
+                            requestId: crypto.randomUUID(),
+                          }),
+                        'Withdrawn. Future shared reads and AIRA retrieval exclude this contribution.',
+                      )
+                    }
+                  >
+                    Withdraw
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </article>
+      ))}
+      {!items.length && (
+        <p className="message">No observations yet. Start with a private draft above.</p>
+      )}
+    </>
+  );
 }

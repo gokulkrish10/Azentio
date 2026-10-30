@@ -29,15 +29,15 @@ begin
   insert into private.audit_events(actor_id,organisation_id,action,resource_id) values(actor,inv.organisation_id,p_action,inv.id);
   return jsonb_build_object('accepted',true);
  end if;
- if p_workspace is null or not private.member(p_workspace) then raise exception 'WORKSPACE_DENIED' using errcode='42501'; end if;
- -- Keep membership revocation ordered with an in-flight transaction.
+ -- Lock first, then check current approval: a concurrent revocation cannot win between check and lock.
  perform 1 from private.memberships where organisation_id=p_workspace and user_id=actor for share;
+ if p_workspace is null or not private.member(p_workspace) then raise exception 'WORKSPACE_DENIED' using errcode='42501'; end if;
  page_no:=coalesce((p_payload->>'page')::integer,0); page_size:=coalesce((p_payload->>'pageSize')::integer,20);
  if page_no<0 or page_no>500 or page_size<1 or page_size>50 then raise exception 'INVALID_PAGE' using errcode='22023'; end if;
  if p_action='dashboard' then
-  return jsonb_build_object('workspaceId',p_workspace,'capabilities',coalesce((select jsonb_agg(capability) from private.role_grants where organisation_id=p_workspace and user_id=actor),'[]'::jsonb),
+  return jsonb_build_object('workspaceId',p_workspace,'capabilities',coalesce((select jsonb_agg(capability) from private.role_grants where organisation_id=p_workspace and user_id=actor and private.cap(p_workspace,capability)),'[]'::jsonb),
    'offerings',coalesce((select jsonb_agg(jsonb_build_object('id',o.id,'title',o.title)) from private.offerings o where private.entitled(p_workspace,o.id)),'[]'::jsonb),
-   'contributionCount',(select count(*) from private.observations where organisation_id=p_workspace and author_id=actor),
+   'contributionCount',(select count(*) from private.observations o join private.revisions r on r.observation_id=o.id and r.version=o.current_revision where o.organisation_id=p_workspace and o.author_id=actor and private.entitled(p_workspace,r.offering_id)),
    'sessions','[]'::jsonb,'experiments','[]'::jsonb,'resources','[]'::jsonb);
  elsif p_action='observations.list' then
   return jsonb_build_object('items',coalesce((select jsonb_agg(x.item) from (
@@ -45,6 +45,13 @@ begin
    from private.observations o join private.revisions r on r.observation_id=o.id and r.version=o.current_revision
    where o.organisation_id=p_workspace and private.source_read(o.id) and private.entitled(p_workspace,r.offering_id)
    order by o.updated_at desc,o.id limit page_size offset page_no*page_size) x),'[]'::jsonb));
+ elsif p_action='observations.history' then
+  select * into obs from private.observations where id=(p_payload->>'id')::uuid;
+  if not found or obs.organisation_id<>p_workspace or obs.author_id<>actor or not private.source_read(obs.id) then raise exception 'RESOURCE_DENIED' using errcode='42501'; end if;
+  return jsonb_build_object('items',coalesce((select jsonb_agg(x.item) from (
+   select to_jsonb(r)||jsonb_build_object('consent',jsonb_build_object('processing',c.processing,'publication',c.publication,'attribution',c.attribution,'training',c.training)) item
+   from private.revisions r join private.consents c on c.observation_id=r.observation_id and c.version=r.version
+   where r.observation_id=obs.id and private.entitled(p_workspace,r.offering_id) order by r.version desc limit page_size offset page_no*page_size)x),'[]'::jsonb));
  elsif p_action='moderation.list' then
   if not private.cap(p_workspace,'learning.moderate') then raise exception 'FORBIDDEN' using errcode='42501'; end if;
   return jsonb_build_object('items',coalesce((select jsonb_agg(x.item) from (
@@ -76,6 +83,7 @@ begin
     'evidence',jsonb_agg(private.shared(p)),'periodStart',min(p.period_start),'periodEnd',max(p.period_end),'updatedAt',max(p.published_at),
     'limitations','Small synthetic sample; contributing organisations are not market prevalence. No causal or anonymity guarantee.') item
    from private.themes t join private.publications p on p.offering_id=t.offering_id and p.topic=t.topic
+   join private.organisations source_org on source_org.id=p.organisation_id and source_org.kind='client' and source_org.synthetic
    where private.publication_read(p.id,p_workspace) and (coalesce(p_payload->>'offeringId','')='' or t.offering_id=p_payload->>'offeringId')
    group by t.id having count(distinct p.organisation_id)>=3 order by t.id limit page_size offset page_no*page_size)x),'[]'::jsonb));
  elsif p_action='ideas.list' then
@@ -122,9 +130,9 @@ begin
    else version_no:=1; end if;
    if not coalesce((p_payload->'consent'->>'processing')::boolean,false) then raise exception 'PROCESSING_CONSENT_REQUIRED' using errcode='23514'; end if;
    if not private.entitled(p_workspace,p_payload->>'offeringId') then raise exception 'ENTITLEMENT_DENIED' using errcode='42501'; end if;
-   insert into private.revisions(observation_id,version,title,body,offering_id,topic,industry,region,period_start,period_end,evidence_type,confidence,evidence_url)
+   insert into private.revisions(observation_id,version,title,body,offering_id,topic,industry,region,period_start,period_end,evidence_type,confidence,evidence_url,source_audience)
     values(target,version_no,p_payload->>'title',p_payload->>'body',p_payload->>'offeringId',p_payload->>'topic',p_payload->>'industry',p_payload->>'region',
-    (p_payload->>'periodStart')::date,(p_payload->>'periodEnd')::date,p_payload->>'evidenceType',p_payload->>'confidence',nullif(p_payload->>'evidenceUrl',''));
+    (p_payload->>'periodStart')::date,(p_payload->>'periodEnd')::date,p_payload->>'evidenceType',p_payload->>'confidence',nullif(p_payload->>'evidenceUrl',''),coalesce(p_payload->>'audience','private'));
    insert into private.consents(observation_id,version,processing,publication,attribution,training,actor_id) values(target,version_no,true,
     coalesce((p_payload->'consent'->>'publication')::boolean,false),coalesce((p_payload->'consent'->>'attribution')::boolean,false),coalesce((p_payload->'consent'->>'training')::boolean,false),actor);
    -- A material edit immediately removes the old shared copy; a new review is necessary.
@@ -157,6 +165,9 @@ begin
     values(target,rev.version,obs.organisation_id,p_payload->>'title',p_payload->>'body',rev.offering_id,p_payload->>'topic',p_payload->>'industry',p_payload->>'region',
     (p_payload->>'periodStart')::date,(p_payload->>'periodEnd')::date,rev.evidence_type,rev.confidence,nullif(p_payload->>'attribution','')) returning id into new_id;
     update private.observations set state='published',updated_at=now() where id=target;
+   elsif p_payload->>'decision'='withdraw' then
+    update private.publications set available=false where observation_id=target;
+    update private.observations set state='withdrawn',updated_at=now() where id=target;
    elsif p_payload->>'decision'='suspend' and obs.state='published' then
     update private.publications set available=false where observation_id=target;
    else raise exception 'INVALID_TRANSITION' using errcode='23514'; end if;
@@ -193,6 +204,7 @@ begin
   else
    select * into idea from private.ideas where id=target for update;
    if not found or idea.owner_id<>actor or idea.owner_workspace<>p_workspace or not private.entitled(p_workspace,idea.offering_id) or not exists(select 1 from private.owner_assignments where organisation_id=p_workspace and user_id=actor and offering_id=idea.offering_id) then raise exception 'RESOURCE_DENIED' using errcode='42501'; end if;
+   if not private.cap(p_workspace,'learning.read') or not exists(select 1 from private.idea_evidence e where e.idea_id=target and private.publication_read(e.publication_id,p_workspace)) then raise exception 'EVIDENCE_DENIED' using errcode='42501'; end if;
    update private.ideas set status=p_payload->>'status',updated_at=now() where id=target;
    -- Generic status notification; it contains no title, excerpt, evidence or internal delivery promises.
    insert into private.notifications(recipient_id,organisation_id,message)

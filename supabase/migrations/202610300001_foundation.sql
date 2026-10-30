@@ -36,6 +36,7 @@ create table private.observations (
 );
 create table private.revisions (
  observation_id uuid references private.observations, version integer not null check(version>0),
+ source_audience text not null default 'private' check(source_audience in ('private','organisation')),
  title text not null check(length(title) between 5 and 160), body text not null check(length(body) between 20 and 6000),
  offering_id text not null references private.offerings, topic text not null check(length(topic) between 1 and 80),
  industry text not null check(length(industry) between 1 and 80), region text not null check(length(region) between 1 and 80),
@@ -54,7 +55,7 @@ create table private.consents (
 );
 create table private.decisions (
  id uuid primary key default gen_random_uuid(), observation_id uuid not null, version integer not null,
- actor_id uuid not null references auth.users, action text not null check(action in ('clarify','reject','publish','suspend','restore','resolve')),
+ actor_id uuid not null references auth.users, action text not null check(action in ('clarify','reject','publish','suspend','restore','resolve','withdraw')),
  note text not null check(length(note) between 1 and 2000), created_at timestamptz not null default now(),
  foreign key(observation_id,version) references private.revisions
 );
@@ -151,7 +152,7 @@ create policy grant_read on private.role_grants for select to authenticated usin
 create policy offerings_read on private.offerings for select to authenticated using(exists(select 1 from private.memberships m where m.user_id=auth.uid() and private.entitled(m.organisation_id,id)));
 create policy entitlement_read on private.entitlements for select to authenticated using(private.member(organisation_id));
 create policy observation_read on private.observations for select to authenticated using(private.source_read(id));
-create policy revision_read on private.revisions for select to authenticated using(private.source_read(observation_id) and exists(select 1 from private.observations o where o.id=observation_id and private.entitled(o.organisation_id,offering_id)));
+create policy revision_read on private.revisions for select to authenticated using(private.source_read(observation_id) and exists(select 1 from private.observations o where o.id=observation_id and private.entitled(o.organisation_id,offering_id) and (o.author_id=auth.uid() or revisions.source_audience='organisation')));
 create policy notification_read on private.notifications for select to authenticated using(recipient_id=auth.uid() and private.member(organisation_id));
 revoke all on all functions in schema private from public,anon,authenticated;
 grant execute on function private.member(uuid),private.cap(uuid,text),private.entitled(uuid,text),private.source_read(uuid) to authenticated;
