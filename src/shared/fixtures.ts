@@ -1,0 +1,3 @@
+import type {SharedPublication} from './contracts';
+// Presentation-only synthetic contract fixture. Never wired into authentication or production APIs.
+export const publicationFixture:SharedPublication={id:'30000000-0000-4000-8000-000000000001',title:'Seasonality context in SME comparisons',body:'Synthetic seasonal cash-flow observations suggest comparing equivalent periods and explaining seasonal effects. This limited evidence is not a market prevalence estimate.',offeringId:'financial-analysis-intelligence',topic:'seasonality',industry:'Financial services',region:'Broad synthetic region',periodStart:'2026-01-01',periodEnd:'2026-06-30',evidenceType:'synthetic scenario',confidence:'medium',attribution:null,publishedAt:'2026-10-30T00:00:00Z'};
